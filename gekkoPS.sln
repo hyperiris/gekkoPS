@@ -1,8 +1,8 @@
-Microsoft Visual Studio Solution File, Format Version 9.00
-# Visual Studio 2005
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "dol", "..\..\ldr\DOL\dol.vcproj", "{8845F4C2-2E03-442E-A21C-76217569F8BA}"
-EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "gekkoPS", "gekkoPS.vcproj", "{D9EA2653-48EB-4712-98E9-11366E411718}"
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.27428.2011
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "gekkoPS", "gekkoPS.vcxproj", "{D9EA2653-48EB-4712-98E9-11366E411718}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -10,10 +10,6 @@ Global
 		Release|Win32 = Release|Win32
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{8845F4C2-2E03-442E-A21C-76217569F8BA}.Debug|Win32.ActiveCfg = Debug|Win32
-		{8845F4C2-2E03-442E-A21C-76217569F8BA}.Debug|Win32.Build.0 = Debug|Win32
-		{8845F4C2-2E03-442E-A21C-76217569F8BA}.Release|Win32.ActiveCfg = Release|Win32
-		{8845F4C2-2E03-442E-A21C-76217569F8BA}.Release|Win32.Build.0 = Release|Win32
 		{D9EA2653-48EB-4712-98E9-11366E411718}.Debug|Win32.ActiveCfg = Debug|Win32
 		{D9EA2653-48EB-4712-98E9-11366E411718}.Debug|Win32.Build.0 = Debug|Win32
 		{D9EA2653-48EB-4712-98E9-11366E411718}.Release|Win32.ActiveCfg = Release|Win32
@@ -21,5 +17,8 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {640EB652-5EE3-4CB8-A527-FD725DBFE47B}
 	EndGlobalSection
 EndGlobal
