@@ -4,7 +4,7 @@
 *	Nintendo GameCube Gekko CPU Extension Module
 *
 *	The PowerPC processor module in IDA Pro does not handle Gekko Paired Single instructions.
-*	Fortunately IDA Pro supports the concept of extension modules that can add support for 
+*	Fortunately IDA Pro supports the concept of extension modules that can add support for
 *	non-standard instructions, so this extension adds support for the PS instruction set.
 *
 *
@@ -14,8 +14,8 @@
 *	Place the processor extension modules (gekkoPS.plw) within your IDA Pro 'plugins' directory.
 *	By default the plugin is active when dealing with PPC code, but you can disable/re-enable the
 *	plugin by using the entry in the Edit/Plugins menu. If you want the plugin to be disabled on
-*	load, you will have to edit this source code. Change the value of g_HookState to 'kDisabled' 
-*	and rebuild.  
+*	load, you will have to edit this source code. Change the value of g_HookState to 'kDisabled'
+*	and rebuild.
 *
 *
 *	CHANGES
@@ -27,10 +27,11 @@
 *
 ***************************************************************************************************/
 
-#define	GEKKO_VERSION	"2007.12.23"
+#define	GEKKO_VERSION	"2018.04.25"
 
 // SDK 4.8's "pro.h" (line 718) has a signed/unsigned mismatch, so we disable this warning..
-//#pragma warning( disable:4018 )		
+//#pragma warning( disable:4018 )
+#pragma warning( disable:4244 )
 
 #include <ida.hpp>
 #include <idp.hpp>
@@ -83,21 +84,21 @@ static const char	g_GekkoNodeName[] = "$ PowerPC Gekko Extension Parameters";
 // Operand identifiers (they map into g_gekkoPsOperands array)
 
 enum	gekko_ps_operand_id
-{	
+{
 	NO_OPERAND,
 	FA,
 	FB,
 	FC,
 	FD,
 	FS = FD,
-	
+
 	crfD,
 
 	WB,
 	IB,
 	WC,
 	IC,
-//	D,
+	//	D,
 
 	RA,
 	RB,
@@ -110,11 +111,11 @@ enum	gekko_ps_operand_id
 
 struct	gekko_ps_operand
 {
-	int					bits;
-	int					shift;
+	int	bits;
+	int	shift;
 };
 
-gekko_ps_operand	g_gekkoPsOperands[] = 
+gekko_ps_operand	g_gekkoPsOperands[] =
 {
 	{ 0, 0	},	// No Operand
 	{ 5, 16	},	// FA
@@ -122,27 +123,27 @@ gekko_ps_operand	g_gekkoPsOperands[] =
 	{ 5, 6	},	// FC
 	{ 5, 21	},	// FD/FS
 
-	{ 3, 23	},	//crfD,
+	{ 3, 23	},	// crfD,
 
 
-	{ 1, 16	},	//WB,
-	{ 3, 12	},	//IB,
-	{ 1, 10	},	//WC,
-	{ 3, 7	},	//IC,
-//	{ 12, 0	},	//D,
+	{ 1, 16	},	// WB,
+	{ 3, 12	},	// IB,
+	{ 1, 10	},	// WC,
+	{ 3, 7	},	// IC,
+//	{ 12, 0	},	// D,
 
 	{ 5, 16	},	// RA
 	{ 5, 11	},	// RB
-	{ 5, 16 },//DRA,
-	{ 5, 11 },//DRB,
+	{ 5, 16 },	// DRA,
+	{ 5, 11 },	// DRB,
 };
 
 // -------------------------------------------------------------------------------------------------
-// Opcode identifiers (they map into g_altivecOpcodes array)
+// Opcode identifiers (they map into g_gekkoPsOpcodes array)
 
 enum gekko_ps_insn_type_t
 {
-	gekko_ps_insn_start = CUSTOM_CMD_ITYPE,
+	gekko_ps_insn_start = CUSTOM_INSN_ITYPE,
 
 	gekko_psq_lx = gekko_ps_insn_start,
 	gekko_psq_stx,
@@ -220,23 +221,23 @@ struct	gekko_ps_opcode
 	gekko_ps_insn_type_t	insn;
 	const char*			name;
 	unsigned int		opcode;
-	unsigned int		mask;	
-	unsigned char		operands[6];	
-	const char*			description;			
+	unsigned int		mask;
+	unsigned char		operands[6];
+	const char*			description;
 };
 
-gekko_ps_opcode	g_gekkoPsOpcodes[] = 
+gekko_ps_opcode	g_gekkoPsOpcodes[] =
 {
 	{	gekko_psq_lx,			"psq_lx",		OPM(4, 6),			OPM_MASK,	{ FD, RA, RB, WC, IC },	"Paired Single Quantized Load Indexed"	},
 	{	gekko_psq_stx,			"psq_stx",		OPM(4, 7),			OPM_MASK,	{ FS, RA, RB, WC, IC },	"Paired Single Quantized Store Indexed"	},
 	{	gekko_psq_lux,			"psq_lux",		OPM(4, 38),			OPM_MASK,	{ FD, RA, RB, WC, IC },	"Paired Single Quantized Load with update Indexed"	},
 	{	gekko_psq_stux,			"psq_stux",		OPM(4, 39),			OPM_MASK,	{ FS, RA, RB, WC, IC },	"Paired Single Quantized Store with update Indexed"	},
-	
+
 	{	gekko_psq_l, 			"psq_l",		OP(56),				OP_MASK,	{ FD, DRA, WB, IB },	"Paired Single Quantized Load"	},
 	{	gekko_psq_lu,			"psq_lu",		OP(57), 			OP_MASK,	{ FD, DRA, WB, IB },	"Paired Single Quantized Load with Update"	},
 	{	gekko_psq_st,			"psq_st",		OP(60), 			OP_MASK,	{ FS, DRA, WB, IB },	"Paired Single Quantized Store"	},
 	{	gekko_psq_stu,			"psq_stu",		OP(61), 			OP_MASK,	{ FS, DRA, WB, IB },	"Paired Single Quantized Store with update"	},
-	
+
 	{	gekko_ps_div,			"ps_div",		OPSC(4, 18, 0),		OPS_MASK,		{ FD, FA, FB},		"Paired Single Divide"	},
 	{	gekko_ps_div_dot,		"ps_div.",		OPSC(4, 18, 1),		OPS_MASK_DOT,	{ FD, FA, FB},		"Paired Single Divide"	},
 	{	gekko_ps_sub,			"ps_sub",		OPSC(4, 20, 0),		OPS_MASK,		{ FD, FA, FB},		"Paired Single Subtract"	},
@@ -268,7 +269,7 @@ gekko_ps_opcode	g_gekkoPsOpcodes[] =
 	{	gekko_ps_nabs_dot,		"ps_nabs.",		OPLC(4, 136, 1),	OPL_MASK_DOT,	{ FD, FB },			"Paired Single Negative Absolute Value"	},
 	{	gekko_ps_abs,			"ps_abs",		OPLC(4, 264, 0),	OPL_MASK,		{ FD, FB },			"Paired Single Absolute Value"	},
 	{	gekko_ps_abs_dot,		"ps_abs.",		OPLC(4, 264, 1),	OPL_MASK_DOT,	{ FD, FB },			"Paired Single Absolute Value"	},
-	
+
 	{	gekko_ps_sum0,			"ps_sum0",		OPSC(4, 10, 0),		OPS_MASK,		{ FD, FA, FC, FB },	"Paired Single vector SUM high"	},
 	{	gekko_ps_sum0_dot,		"ps_sum0.",		OPSC(4, 10, 1),		OPS_MASK_DOT,	{ FD, FA, FC, FB },	"Paired Single vector SUM high"	},
 	{	gekko_ps_sum1,			"ps_sum1",		OPSC(4, 11, 0),		OPS_MASK,		{ FD, FA, FC, FB },	"Paired Single vector SUM low"	},
@@ -281,7 +282,7 @@ gekko_ps_opcode	g_gekkoPsOpcodes[] =
 	{	gekko_ps_madds0_dot,	"ps_madds0.",	OPSC(4, 14, 1),		OPS_MASK_DOT,	{ FD, FA, FC, FB },	"Paired Single Multiply-Add Scalar high"},
 	{	gekko_ps_madds1,		"ps_madds1",	OPSC(4, 15, 0),		OPS_MASK,		{ FD, FA, FC, FB },	"Paired Single Multiply-Add Scalar low"	},
 	{	gekko_ps_madds1_dot,	"ps_madds1.",	OPSC(4, 15, 1),		OPS_MASK_DOT,	{ FD, FA, FC, FB },	"Paired Single Multiply-Add Scalar low"	},
-	
+
 	{	gekko_ps_cmpu0,			"ps_cmpu0",		OPL(4, 0),			OPL_MASK,		{ crfD, FA, FB },	"Paired Singles Compare Unordered High"	},
 	{	gekko_ps_cmpo0,			"ps_cmpo0",		OPL(4, 32),			OPL_MASK,		{ crfD, FA, FB },	"Paired Singles Compare Ordered High"	},
 	{	gekko_ps_cmpu1,			"ps_cmpu1",		OPL(4, 64),			OPL_MASK,		{ crfD, FA, FB },	"Paired Singles Compare Unordered Low"	},
@@ -309,112 +310,113 @@ gekko_ps_opcode	g_gekkoPsOpcodes[] =
 *
 ***************************************************************************************************/
 
-int	PluginAnalyse( void )
+int	PluginAnalyse(insn_t *_insn)
 {
+	insn_t &insn = *_insn;
 	// Get the CodeBytes
-	ulong codeBytes = get_long( cmd.ea );
+	uint32 codeBytes = get_dword(insn.ea);
 
 	// When we check
-	ulong opBytes = ( codeBytes & OP_MASK );
+	uint32 opBytes = (codeBytes & OP_MASK);
 
 	// All our opcodes have a primary op setting of 4 or 56, 57, 60, 61. 
-	if (( opBytes == OP( 4 ) ) || 
-		( opBytes == OP( 56 ) ) ||
-		( opBytes == OP( 57 ) ) || 
-		( opBytes == OP( 60 ) ) || 
-		( opBytes == OP( 61 ) ))
+	if ((opBytes == OP(4)) ||
+		(opBytes == OP(56)) ||
+		(opBytes == OP(57)) ||
+		(opBytes == OP(60)) ||
+		(opBytes == OP(61)))
 	{
-		int	opcodeArraySize				= sizeof( g_gekkoPsOpcodes ) / sizeof( gekko_ps_opcode );
-		gekko_ps_opcode*	pCurrentOpcode	= g_gekkoPsOpcodes;
+		int	opcodeArraySize = sizeof(g_gekkoPsOpcodes) / sizeof(gekko_ps_opcode);
+		gekko_ps_opcode*	pCurrentOpcode = g_gekkoPsOpcodes;
 
 		// Go through the entire opcode array looking for a match
-		for ( int opcodeLoop = 0; opcodeLoop < opcodeArraySize; opcodeLoop++ )
+		for (int opcodeLoop = 0; opcodeLoop < opcodeArraySize; opcodeLoop++)
 		{
 			// Is this a match?
-			if ( ( codeBytes & pCurrentOpcode->mask ) == pCurrentOpcode->opcode ) 
+			if ((codeBytes & pCurrentOpcode->mask) == pCurrentOpcode->opcode)
 			{
 				// Ok, so we've got a match.. let's sort out the operands..
 				int operandLoop = 0;
-				while ( ( pCurrentOpcode->operands[ operandLoop ] != 0 ) && ( operandLoop < 6 ) )
+				while ((pCurrentOpcode->operands[operandLoop] != 0) && (operandLoop < 6))
 				{
-					op_t*				operandData = &cmd.Operands[ operandLoop ];
+					op_t* operandData = &insn.ops[operandLoop];
 
-					gekko_ps_operand*	pCurrentOperand = &g_gekkoPsOperands[ pCurrentOpcode->operands[ operandLoop ] ];
+					gekko_ps_operand* pCurrentOperand = &g_gekkoPsOperands[pCurrentOpcode->operands[operandLoop]];
 
-					int	rawBits			=	( codeBytes >> pCurrentOperand->shift ) & ( ( 1 <<  pCurrentOperand->bits ) - 1 );
-					int	extendedBits	=	( rawBits << ( 32 - pCurrentOperand->bits ) ) >> ( 32 - pCurrentOperand->bits );
+					int	rawBits = (codeBytes >> pCurrentOperand->shift) & ((1 << pCurrentOperand->bits) - 1);
+					int	extendedBits = (rawBits << (32 - pCurrentOperand->bits)) >> (32 - pCurrentOperand->bits);
 
-					switch ( pCurrentOpcode->operands[ operandLoop ] )
+					switch (pCurrentOpcode->operands[operandLoop])
 					{
 						// These are the main Gekko registers
-						case	FA:
-						case	FB:
-						case	FC:
-						case	FD://FS
-						//case	FS:
-							{
-								operandData->type		=	o_reg;
-								operandData->reg		=	rawBits;
-								operandData->specflag1	=	0x01;		// Mark the register as being an Gekko one.
-								break;
-							}
-	
-						// Gekko PS memory loads are always via a CPU register
-						case	RA:
-						case	RB:
-							{
-								operandData->type		=	o_reg;
-								operandData->reg		=	rawBits;
-								operandData->specflag1	=	0x00;
-								break;
-							}
+					case	FA:
+					case	FB:
+					case	FC:
+					case	FD://FS
+					//case	FS:
+					{
+						operandData->type = o_reg;
+						operandData->reg = rawBits;
+						operandData->specflag1 = 0x01;		// Mark the register as being an Gekko one.
+						break;
+					}
 
-						case	crfD:
-						case	WB:
-						case	IB:
-						case	WC:
-						case	IC:
-							{
-								operandData->type	=	o_imm;
-								operandData->dtyp	=	dt_byte;
-								operandData->value	=	rawBits;
-								break;
-							}
+					// Gekko PS memory loads are always via a CPU register
+					case	RA:
+					case	RB:
+					{
+						operandData->type = o_reg;
+						operandData->reg = rawBits;
+						operandData->specflag1 = 0x00;
+						break;
+					}
 
-						case	DRA:
-							{
-								unsigned short imm	= (unsigned short)(codeBytes & 0x7FF);
-								unsigned short sign = (unsigned short)(codeBytes & 0x800);
-								short displacement = 0;
+					case	crfD:
+					case	WB:
+					case	IB:
+					case	WC:
+					case	IC:
+					{
+						operandData->type = o_imm;
+						operandData->dtype = dt_byte;
+						operandData->value = rawBits;
+						break;
+					}
 
-								if (sign == 0)
-									displacement = imm;
-								else
-									displacement = -1 * imm;
+					case	DRA:
+					{
+						unsigned short imm = (unsigned short)(codeBytes & 0x7FF);
+						unsigned short sign = (unsigned short)(codeBytes & 0x800);
+						short displacement = 0;
+
+						if (sign == 0)
+							displacement = imm;
+						else
+							displacement = -1 * imm;
 
 
-								operandData->type	=	o_displ;
-								operandData->phrase	=	rawBits;
-								operandData->addr	=	displacement;
+						operandData->type = o_displ;
+						operandData->phrase = rawBits;
+						operandData->addr = displacement;
 
-								break;
-							}
-						
-						default:
-							break;
-					}	
+						break;
+					}
+
+					default:
+						break;
+					}
 
 					// Next operand please..
 					operandLoop++;
 				}
 
 				// Make a note of which opcode we are.. we need it to print our stuff out.
-				cmd.itype	= pCurrentOpcode->insn;
+				insn.itype = pCurrentOpcode->insn;
 
 				// The command is 4 bytes long.. 
 				return 4;
-			}	
-	
+			}
+
 			// We obviously didn't find our opcode this time round.. go test the next one.
 			pCurrentOpcode++;
 		}
@@ -433,8 +435,8 @@ int	PluginAnalyse( void )
 *					intercepted event that we deal with. In our case we deal with the following
 *					event identifiers.
 *
-*					custom_ana		:	Analyses a command (in 'cmd') to see if it is an Gekko PS 
-*										instruction. If so, then it extracts information from the 
+*					custom_ana		:	Analyses a command (in 'cmd') to see if it is an Gekko PS
+*										instruction. If so, then it extracts information from the
 *										opcode in order to determine which opcode it is, along with
 *										data relating to any used operands.
 *
@@ -447,154 +449,106 @@ int	PluginAnalyse( void )
 *
 *					may_be_func		:	It's perfectly OK for an Gekko PS instruction to be the start
 *										of a function, so I figured I should return 100 here. The
-*										return value is a percentage probability.. 
+*										return value is a percentage probability..
 *
 *					is_sane_insn	:	All our Gekko PS instructions (well, the ones we've identified
-*										inside custom_ana processing), are ok.	
+*										inside custom_ana processing), are ok.
 *
 ***************************************************************************************************/
 
-static int PluginExtensionCallback( void * /*user_data*/, int event_id, va_list va )
+static ssize_t idaapi PluginExtensionCallback(void * user_data, int notification_code, va_list va)
 {
-	switch ( event_id )
+	switch (notification_code)
 	{
 		// Analyse a command to see if it's an Gekko PS instruction.
-		case ph.custom_ana:
+	case processor_t::ev_ana_insn:
+	{
+		insn_t *_insn = va_arg(va, insn_t *);
+
+		int length = PluginAnalyse(_insn);
+		if (length)
 		{
-			int length = PluginAnalyse();
-			if ( length )
-			{
-				cmd.size = length;
-				return ( length + 1 );       // event processed
-			}
-			break;
+			_insn->size = length;
+			//return (length + 1);	// event processed
+			return length;	// event processed
 		}
-	
-		// Obtain mnemonic for our Gekko PS instructions.
-		case ph.custom_mnem:
+		break;
+	}
+
+	// Obtain mnemonic for our Gekko PS instructions.
+	case processor_t::ev_out_mnem:
+	{
+		outctx_t * _ctx = va_arg(va, outctx_t *);
+
+		if (_ctx->insn.itype >= CUSTOM_INSN_ITYPE)
 		{
-			if ( cmd.itype >= CUSTOM_CMD_ITYPE )
-			{
-				char *buf   = va_arg(va, char *);
-				size_t size = va_arg(va, size_t);
-				qstrncpy(buf, g_gekkoPsOpcodes[ cmd.itype - gekko_ps_insn_start ].name, size);
-				return 2;
-			}
-			break;
+			_ctx->out_custom_mnem(g_gekkoPsOpcodes[_ctx->insn.itype - gekko_ps_insn_start].name, 10, " ");
+			return 1;
 		}
+		break;
+	}
 
-		// Display operands that differ from PPC ones.. like our Gekko PS registers.
-		case ph.custom_outop:
+	// Display operands that differ from PPC ones.. like our Gekko PS registers.
+	case processor_t::ev_out_operand:
+	{
+		outctx_t * _ctx = va_arg(va, outctx_t *);
+
+		if (_ctx->insn.itype >= CUSTOM_INSN_ITYPE)
 		{
-			if ( cmd.itype >= CUSTOM_CMD_ITYPE )
+			op_t* operand = va_arg(va, op_t*);
+
+			if ((operand->type == o_reg) && (operand->specflag1 & 0x01))
 			{
-				op_t* operand = va_arg( va, op_t* );
-				if ( ( operand->type == o_reg ) && ( operand->specflag1 & 0x01 ) )
-				{
-					char buf[ MAXSTR ];
-					_snprintf_s( buf, MAXSTR, "%%fr%d", operand->reg );					
-					out_register( buf );
-					return 2;
-				}
-			}
-			break;
-		}
-
-		// Custom output
-		case ph.custom_out:
-		{
-			if ( cmd.itype >= CUSTOM_CMD_ITYPE )
-			{
-				char buf[ MAXSTR ];	
-				init_output_buffer( buf, sizeof( buf ) );
-		
-				// Output mnemonic
-				OutMnem();
-
-				// Output operands
-				if ( cmd.Op1.showed() && cmd.Op1.type != o_void )
-				{
-					 out_one_operand( 0 );
-				}
-
-				if ( cmd.Op2.showed() && cmd.Op2.type != o_void )
-				{
-					if ( cmd.Op1.showed() )
-					{
-						out_symbol(',');
-						OutChar(' ');
-					}
-					out_one_operand( 1 );
-				}
-				
-				if ( cmd.Op3.showed() && cmd.Op3.type != o_void )
-				{
-					if ( cmd.Op1.showed() || cmd.Op2.showed() )
-					{
-						out_symbol(',');
-						OutChar(' ');
-					}
-					out_one_operand( 2 );
-				}
-
-				if ( cmd.Op4.showed() && cmd.Op4.type != o_void )
-				{
-					if ( cmd.Op1.showed() || cmd.Op2.showed() || cmd.Op3.showed() )
-					{
-						out_symbol(',');
-						OutChar(' ');
-					}
-					out_one_operand( 3 );
-				}
-
-				if ( cmd.Op5.showed() && cmd.Op5.type != o_void )
-				{
-					if ( cmd.Op1.showed() || cmd.Op2.showed() || cmd.Op3.showed() || cmd.Op4.showed() )
-					{
-						out_symbol(',');
-						OutChar(' ');
-					}
-					out_one_operand( 4 );
-				}
-
-
-				// Output auto comments
-				if ( showAllComments() && ( get_cmt( cmd.ea, true, NULL, 0 ) == -1 ) )
-				{
-					for ( int indentLoop = tag_strlen( buf ); indentLoop < ( inf.comment - inf.indent ); indentLoop++ )
-						OutChar(' ');
-					out_line( "# ", COLOR_AUTOCMT );
-					out_line( g_gekkoPsOpcodes[ cmd.itype - gekko_ps_insn_start ].description, COLOR_AUTOCMT );			
-				}
-				//else
-					gl_comm = 1;
-
-				term_output_buffer();
-
-				MakeLine(buf);
-				return 2;
-			}
-			break;
-		}
-
-		// Can this be the start of a function? 
-		case ph.may_be_func:
-		{
-			if ( cmd.itype >= CUSTOM_CMD_ITYPE )
-			{
-				return 100;
-			}
-			break;
-		}
-
-		// If we've identified the command as an Gekko PS instruction, it's good to go.
-		case ph.is_sane_insn:
-		{
-			if ( cmd.itype >= CUSTOM_CMD_ITYPE )
-			{
+				char buf[MAXSTR] = { 0 };
+				_snprintf_s(buf, MAXSTR, "fr%d", operand->reg);
+				_ctx->out_register(buf);
 				return 1;
 			}
 		}
+		break;
+	}
+
+	// dunno why not work, seems an IDA bug???
+	case processor_t::ev_get_autocmt:
+	{
+		qstring * buf = va_arg(va, qstring *);
+		const ::insn_t * insn = va_arg(va, const ::insn_t *);
+		if (insn->itype >= CUSTOM_INSN_ITYPE)
+		{
+			// Output auto comments
+			//if (show_all_comments() && (get_cmt(NULL, insn->ea, true) == -1))
+			{
+				*buf = g_gekkoPsOpcodes[insn->itype - gekko_ps_insn_start].description;
+			}
+			return 1;
+		}
+		break;
+	}
+
+	// Can this be the start of a function? 
+	case processor_t::ev_may_be_func:
+	{
+		insn_t *_insn = va_arg(va, insn_t *);
+		if (_insn->itype >= CUSTOM_INSN_ITYPE)
+		{
+			return 100;
+		}
+		break;
+	}
+
+	// If we've identified the command as an Gekko PS instruction, it's good to go.
+	case processor_t::ev_is_sane_insn:
+	{
+		insn_t *_insn = va_arg(va, insn_t *);
+		if (_insn->itype >= CUSTOM_INSN_ITYPE)
+		{
+			return 1;
+		}
+	}
+	default:
+	{
+		__noop;
+	}
 	}
 
 	// We didn't process the event.. just let IDA handle it.
@@ -613,13 +567,13 @@ static int PluginExtensionCallback( void * /*user_data*/, int event_id, va_list 
 *					from the menu. After the second load, the plugin will stay in memory.
 *
 *	NOTES			In our case, we just hook into IDA'S callbacks if we need to be active
-*					on plugin load. 
+*					on plugin load.
 *
 ***************************************************************************************************/
 
-int	PluginStartup( void )
+int	PluginStartup(void)
 {
-	if ( ph.id != PLFM_PPC )
+	if (ph.id != PLFM_PPC)
 		return PLUGIN_SKIP;
 
 	//inf.s_cmtflg |= SW_ALLCMT;
@@ -631,20 +585,20 @@ int	PluginStartup( void )
 		msg( "All comments disabled\n" );
 	//*/
 	// Create our node...
-	g_GekkoNode.create( g_GekkoNodeName );
+	g_GekkoNode.create(g_GekkoNodeName);
 
 	// Retrieve any existing hook state that may be in the database.
-	HookState	databaseHookState = ( HookState )g_GekkoNode.altval( 0 );
+	HookState	databaseHookState = (HookState)g_GekkoNode.altval(0);
 
 	// altval() returns 0 (which maps to kDefault) when the value isn't there.. so handle it.
-	if ( databaseHookState != kDefault )
-		g_HookState = databaseHookState;	
+	if (databaseHookState != kDefault)
+		g_HookState = databaseHookState;
 
-	if ( g_HookState == kEnabled )
+	if (g_HookState == kEnabled)
 	{
-		hook_to_notification_point( HT_IDP, PluginExtensionCallback, NULL );
-		msg( "Nintendo GameCube Gekko CPU Extension " GEKKO_VERSION " is enabled\n" );
-		msg( "This plug-in was created by HyperIris (fsstudio@263.net)\n" );
+		hook_to_notification_point(HT_IDP, PluginExtensionCallback, NULL);
+		msg("Nintendo GameCube Gekko CPU Extension " GEKKO_VERSION " is enabled\n");
+		msg("This plug-in was created by HyperIris (fsstudio@263.net)\n");
 		return PLUGIN_KEEP;
 	}
 
@@ -663,9 +617,9 @@ int	PluginStartup( void )
 *
 ***************************************************************************************************/
 
-void	PluginShutdown( void )
+void	PluginShutdown(void)
 {
-	unhook_from_notification_point( HT_IDP, PluginExtensionCallback );
+	unhook_from_notification_point(HT_IDP, PluginExtensionCallback);
 }
 
 
@@ -673,37 +627,39 @@ void	PluginShutdown( void )
 *
 *	FUNCTION		PluginMain
 *
-*	DESCRIPTION		Our plugin is all about hooking callbacks.. 
+*	DESCRIPTION		Our plugin is all about hooking callbacks..
 *
 ***************************************************************************************************/
 
-void PluginMain( int /*arg*/ )
+bool PluginMain(size_t /*arg*/)
 {
-	if ( g_HookState == kEnabled )
+	if (g_HookState == kEnabled)
 	{
-		unhook_from_notification_point( HT_IDP, PluginExtensionCallback );
+		unhook_from_notification_point(HT_IDP, PluginExtensionCallback);
 		g_HookState = kDisabled;
 	}
 	else
-	if ( g_HookState == kDisabled )
-	{
-		hook_to_notification_point( HT_IDP, PluginExtensionCallback, NULL );
-		g_HookState = kEnabled;
-	}
+		if (g_HookState == kDisabled)
+		{
+			hook_to_notification_point(HT_IDP, PluginExtensionCallback, NULL);
+			g_HookState = kEnabled;
+		}
 
-	g_GekkoNode.create( g_GekkoNodeName );
-	g_GekkoNode.altset( 0, g_HookState );
+	g_GekkoNode.create(g_GekkoNodeName);
+	g_GekkoNode.altset(0, g_HookState);
 
-	static const char* pHookStateDescription[] = 
+	static const char* pHookStateDescription[] =
 	{
 		"default",
 		"enabled",
 		"disabled",
 	};
 
-	info(	"AUTOHIDE NONE\n"
-			"Nintendo GameCube Gekko CPU Extension " GEKKO_VERSION " is now %s", pHookStateDescription[ g_HookState ] );
+	info("AUTOHIDE NONE\n"
+		"Nintendo GameCube Gekko CPU Extension " GEKKO_VERSION " is now %s", pHookStateDescription[g_HookState]);
 	//msg("Nintendo GameCube Gekko CPU Extension ")
+
+	return true;
 }
 
 
@@ -713,9 +669,9 @@ void PluginMain( int /*arg*/ )
 *
 ***************************************************************************************************/
 
-char	g_pluginName[]	=	"Nintendo GameCube Gekko CPU Extension " GEKKO_VERSION;
-char	g_pluginHelp[]	=	"This plugin enables recognition of Gekko CPU Extension instructions\n"
-							"when using IDA Pro's PowerPC processor module\n";
+char	g_pluginName[] = "Nintendo GameCube Gekko CPU Extension " GEKKO_VERSION;
+char	g_pluginHelp[] = "This plugin enables recognition of Gekko CPU Extension instructions\n"
+"when using IDA Pro's PowerPC processor module\n";
 
 
 /***************************************************************************************************
